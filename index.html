@@ -4197,6 +4197,11 @@ async function sbDelCourse(id){
   try{ await _sb.from('courses').delete().eq('id',id).eq('user_id',_userId); }catch(e){console.warn(e);}
 }
 
+async function sbDelTerm(id){
+  if(!_sb||!_userId) return;
+  try{ await _sb.from('terms').delete().eq('id',id).eq('user_id',_userId); }catch(e){console.warn(e);}
+}
+
 async function sbSaveTerms(){
   if(!_sb||!_userId) return;
   try{
@@ -4413,7 +4418,7 @@ function delTerm(id){
     trashAdd('term', (term&&term.name)||'Dönem', {term, courses:cs});
     cs.forEach(c=>idbDel(c.id));
     courses=courses.filter(c=>c.termId!==id);
-    terms=terms.filter(t=>t.id!==id); saveTerms(); renderTermList();
+    terms=terms.filter(t=>t.id!==id); saveTerms(); sbDelTerm(id); renderTermList();
   }, 'Evet, dönemi sil');
 }
 function openTerm(id){
@@ -4612,8 +4617,9 @@ function renderBackupHint(){
   const days=ts? Math.floor((Date.now()-ts)/86400000) : -1;
   if(ts && days<7){ el.innerHTML=''; return; }
   const msg= ts? `Son yedeğin <b>${days} gün önce</b> alınmış.` : `Henüz hiç <b>dosya yedeği</b> almadın.`;
-  el.innerHTML=`<div class="backup-hint">⚠️ ${msg} Veriler bu tarayıcıda saklanır; tarayıcı verisi silinirse kaybolur. <button class="btn mini" onclick="saveData()">Şimdi yedek al (.json)</button></div>`;
+  el.innerHTML=`<div class="backup-hint">⚠️ ${msg} Veriler bu tarayıcıda saklanır; tarayıcı verisi silinirse kaybolur. <button class="btn mini" onclick="saveData()">Şimdi yedek al (.json)</button> <button class="btn mini ghost" onclick="dismissBackupHint()">Hatırlatma, kapat</button></div>`;
 }
+function dismissBackupHint(){ noteBackupTaken(); const el=document.getElementById('backupHint'); if(el) el.innerHTML=''; }
 function setupAutosave(){
   document.addEventListener('input', markDirty, true);
   document.addEventListener('change', markDirty, true);

@@ -4091,6 +4091,14 @@ function initSupabase(){
   if(!url||!key) return false;
   try{
     _sb = supabase.createClient(url, key);
+    // Supabase'in resmi "şifre sıfırlama" olayı — hash tabanlı algılama kaçırırsa bu yakalar
+    _sb.auth.onAuthStateChange((event, session)=>{
+      if(event==='PASSWORD_RECOVERY' && session){
+        _userId=session.user.id;
+        document.getElementById('authScreen').style.display='none';
+        document.getElementById('recoveryScreen').style.display='flex';
+      }
+    });
     return true;
   }catch(e){ console.warn('Supabase init hatası:', e); return false; }
 }
@@ -4366,6 +4374,10 @@ async function forceUpdateCheck(){
   location.replace(url.toString());
 }
 async function boot(){
+  // Şifre sıfırlama linkinden mi geldik? (URL'de type=recovery varsa) — bunu Supabase
+  // istemcisi adres çubuğunu temizlemeden ÖNCE, en başta yakalamamız gerekiyor.
+  const isRecovery = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
+
   localStorage.setItem('sb_url','https://jzgyhmmefzadqcfvlayf.supabase.co');
   localStorage.setItem('sb_key','sb_publishable_fBixyaUe3mK5Wxv4av6tFA_lsjdRns3');
 
@@ -4375,9 +4387,6 @@ async function boot(){
 
   // Supabase başlat
   const sbReady=initSupabase();
-
-  // Şifre sıfırlama linkinden mi geldik? (URL'de type=recovery varsa)
-  const isRecovery = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
 
   // Mevcut oturumu kontrol et
   if(sbReady){

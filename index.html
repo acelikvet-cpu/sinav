@@ -672,8 +672,19 @@
       <div style="font-size:11.5px;color:#9a8f7a;text-align:center">İlk kurulum — Supabase bilgilerini gir</div>
       <input id="cfgUrl" placeholder="https://xxxx.supabase.co" style="border:1px solid #e3dcc9;border-radius:8px;padding:9px 12px;font-size:12px;outline:none">
       <input id="cfgKey" placeholder="eyJhbG... (anon public key)" style="border:1px solid #e3dcc9;border-radius:8px;padding:9px 12px;font-size:12px;outline:none">
-      <button onclick="authSaveConfig()" style="background:#8a2b2b;color:#fff;border:0;border-radius:8px;padding:9px;font-size:13px;cursor:pointer">Kaydet ve Bağlan</button>
+  </div>
+</div>
+
+<div id="recoveryScreen" style="display:none;position:fixed;inset:0;z-index:1001;background:#16314e;align-items:center;justify-content:center">
+  <div style="background:#fffdf8;border-radius:20px;padding:36px 32px;width:min(360px,92vw);display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="text-align:center">
+      <div style="font-size:22px;font-weight:800;color:#16314e">Yeni Şifre Belirle</div>
+      <div style="font-size:13px;color:#7a7264;margin-top:4px">Hesabınız için yeni bir şifre girin</div>
     </div>
+    <div id="recoveryMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;text-align:center"></div>
+    <input id="recoveryPass1" type="password" placeholder="Yeni şifre (en az 6 karakter)" style="border:1px solid #e3dcc9;border-radius:10px;padding:12px 14px;font-size:14px;outline:none">
+    <input id="recoveryPass2" type="password" placeholder="Yeni şifre (tekrar)" style="border:1px solid #e3dcc9;border-radius:10px;padding:12px 14px;font-size:14px;outline:none">
+    <button onclick="authCompleteRecovery()" style="background:#16314e;color:#fff;border:0;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer">Şifreyi Kaydet</button>
   </div>
 </div>
 
@@ -4365,11 +4376,19 @@ async function boot(){
   // Supabase başlat
   const sbReady=initSupabase();
 
+  // Şifre sıfırlama linkinden mi geldik? (URL'de type=recovery varsa)
+  const isRecovery = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
+
   // Mevcut oturumu kontrol et
   if(sbReady){
     const {data:{session}}=await _sb.auth.getSession();
     if(session){
       _userId=session.user.id;
+      if(isRecovery){
+        document.getElementById('authScreen').style.display='none';
+        const rs=document.getElementById('recoveryScreen'); rs.style.display='flex';
+        return;
+      }
       document.getElementById('authScreen').style.display='none';
       await bootAfterAuth();
       return;
@@ -4380,6 +4399,25 @@ async function boot(){
   document.getElementById('authScreen').style.display='flex';
   // Supabase bilgileri zaten yüklü, config alanını gizle
   if(sbReady) document.getElementById('authConfig').style.display='none';
+}
+async function authCompleteRecovery(){
+  const p1=document.getElementById('recoveryPass1').value;
+  const p2=document.getElementById('recoveryPass2').value;
+  const msg=document.getElementById('recoveryMsg');
+  const showMsg=(text,ok)=>{ msg.style.display='block'; msg.textContent=text; msg.style.background=ok?'#e6f4ea':'#fbe9e9'; msg.style.color=ok?'#1e7a3e':'#a13a3a'; };
+  if(!p1||p1.length<6){ showMsg('Şifre en az 6 karakter olmalı.',false); return; }
+  if(p1!==p2){ showMsg('Şifreler birbiriyle uyuşmuyor.',false); return; }
+  try{
+    const {error}=await _sb.auth.updateUser({password:p1});
+    if(error){ showMsg('Hata: '+error.message,false); return; }
+    showMsg('Şifreniz güncellendi, uygulamaya giriliyor…',true);
+    // recovery işaretini adres çubuğundan temizle ki tekrar sıfırlama ekranı çıkmasın
+    history.replaceState(null,'',location.pathname);
+    setTimeout(async ()=>{
+      document.getElementById('recoveryScreen').style.display='none';
+      await bootAfterAuth();
+    },900);
+  }catch(e){ showMsg('Hata: '+(e.message||e),false); }
 }
 /* ======= sol kenar çubuğu ======= */
 function renderSidebar(){

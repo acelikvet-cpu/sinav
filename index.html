@@ -692,7 +692,7 @@
 <div id="sbBackdrop" onclick="document.body.classList.remove('sb-open')"></div>
 <button id="sbToggle" class="sb-toggle" aria-label="Menüyü aç/kapat" onclick="document.body.classList.toggle('sb-open')">☰</button>
 
-<div id="screen-terms" class="screen">
+<div id="screen-terms" class="screen" style="display:none">
   <div class="screen-head">
     <div class="screen-brand">Sınav Kitapçığı Oluşturucu</div>
     <div class="screen-actions">
@@ -4183,7 +4183,9 @@ async function authLogout(){
     Object.keys(localStorage).forEach(k=>{ if(k.startsWith('sb-')||k.includes('supabase.auth')) localStorage.removeItem(k); });
   }catch(e){ console.warn(e); }
   _userId=null; _sb=null;
-  location.reload();
+  // Adresteki olası eski token/hash bilgisini temizle (yoksa sayfa yeniden
+  // yüklenince aynı token okunup kullanıcı tekrar otomatik içeri alınabilir)
+  location.replace(location.origin + location.pathname);
 }
 
 /* --- Supabase veri fonksiyonları --- */
@@ -4374,9 +4376,14 @@ async function forceUpdateCheck(){
   location.replace(url.toString());
 }
 async function boot(){
-  // Şifre sıfırlama linkinden mi geldik? (URL'de type=recovery varsa) — bunu Supabase
-  // istemcisi adres çubuğunu temizlemeden ÖNCE, en başta yakalamamız gerekiyor.
-  const isRecovery = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
+  // Adres çubuğundaki hash parametrelerini KENDİMİZ okuyoruz — Supabase kütüphanesinin
+  // arka planda ne zaman işlediğine bağımlı kalmamak için (önceki hatanın kaynağı buydu).
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const linkType = hashParams.get('type');
+  const linkAccessToken = hashParams.get('access_token');
+  const linkRefreshToken = hashParams.get('refresh_token');
+  const linkError = hashParams.get('error') || hashParams.get('error_code');
+  const isRecovery = linkType==='recovery' && !!linkAccessToken;
 
   localStorage.setItem('sb_url','https://jzgyhmmefzadqcfvlayf.supabase.co');
   localStorage.setItem('sb_key','sb_publishable_fBixyaUe3mK5Wxv4av6tFA_lsjdRns3');
@@ -4388,16 +4395,32 @@ async function boot(){
   // Supabase başlat
   const sbReady=initSupabase();
 
+  if(sbReady && linkError){
+    document.getElementById('authScreen').style.display='flex';
+    if(document.getElementById('authConfig')) document.getElementById('authConfig').style.display='none';
+    setAuthMsg('Bağlantının süresi dolmuş veya geçersiz. Lütfen "Şifremi Unuttum" ile yeni bir bağlantı isteyin.','err');
+    history.replaceState(null,'',location.pathname);
+    return;
+  }
+
+  if(sbReady && isRecovery){
+    // Oturumu linkteki token'larla KENDİMİZ, doğrudan kuruyoruz.
+    try{
+      const {data,error}=await _sb.auth.setSession({access_token:linkAccessToken, refresh_token:linkRefreshToken});
+      if(!error && data.session){
+        _userId=data.session.user.id;
+        document.getElementById('authScreen').style.display='none';
+        document.getElementById('recoveryScreen').style.display='flex';
+        return;
+      }
+    }catch(e){ console.warn('Recovery session hatası:', e); }
+  }
+
   // Mevcut oturumu kontrol et
   if(sbReady){
     const {data:{session}}=await _sb.auth.getSession();
     if(session){
       _userId=session.user.id;
-      if(isRecovery){
-        document.getElementById('authScreen').style.display='none';
-        const rs=document.getElementById('recoveryScreen'); rs.style.display='flex';
-        return;
-      }
       document.getElementById('authScreen').style.display='none';
       await bootAfterAuth();
       return;

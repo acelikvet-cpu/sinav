@@ -4150,7 +4150,7 @@ async function authReset(){
   const email=document.getElementById('authEmail').value.trim();
   if(!email){ setAuthMsg('E-posta adresini gir.','err'); return; }
   setAuthMsg('Gönderiliyor…','info');
-  const {error}=await _sb.auth.resetPasswordForEmail(email);
+  const {error}=await _sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://acelikvet-cpu.github.io/sinav/' });
   if(error){ setAuthMsg('Hata: '+error.message,'err'); return; }
   setAuthMsg('✉️ Şifre sıfırlama bağlantısı e-postana gönderildi.','ok');
 }

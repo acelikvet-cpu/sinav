@@ -645,7 +645,7 @@
 </head>
 <body>
 <button id="globalLogoutBtn" onclick="authLogout()" title="Çıkış Yap" style="display:none;position:fixed;bottom:16px;right:16px;z-index:1000;background:#8a2b2b;color:#fff;border:0;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif">🚪 Çıkış Yap</button>
-<button id="globalRefreshBtn" onclick="forceUpdateCheck()" title="Güncellemeleri kontrol et (önbelleği atla)" style="position:fixed;bottom:16px;right:130px;z-index:1000;background:#16314e;color:#fff;border:0;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif">🔄 Güncelle</button>
+<button id="globalRefreshBtn" onclick="forceUpdateCheck()" title="Güncellemeleri kontrol et (önbelleği atla)" style="display:none;position:fixed;bottom:16px;right:130px;z-index:1000;background:#16314e;color:#fff;border:0;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif">🔄 Güncelle</button>
 
 <div id="errBar" class="err-bar" style="display:none">
   <span id="errBarMsg"></span>
@@ -4284,6 +4284,7 @@ async function bootAfterAuth(){
   // Supabase realtime: başka cihazdan değişiklik gelirse bildir
   if(_sb&&_userId){
     const glb=document.getElementById('globalLogoutBtn'); if(glb) glb.style.display='block';
+    const grb=document.getElementById('globalRefreshBtn'); if(grb) grb.style.display='block';
     _sb.channel('courses').on('postgres_changes',
       {event:'*', schema:'public', table:'courses', filter:'user_id=eq.'+_userId},
       async ()=>{
